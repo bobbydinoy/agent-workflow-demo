@@ -27,10 +27,11 @@ class ResearchAgent(Executor):
         *,
         use_llm: bool = False,
         llm_api_key: str = "",
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = "gpt-5.4-mini",
         llm_endpoint: str = "https://api.openai.com/v1/chat/completions",
         llm_timeout: int = 20,
         llm_tool_routing: bool = True,
+        enable_public_api: bool = False,
     ) -> None:
         super().__init__(id="research")
         self._notes_path = notes_path
@@ -42,6 +43,7 @@ class ResearchAgent(Executor):
         self._llm_endpoint = llm_endpoint
         self._llm_timeout = llm_timeout
         self._llm_tool_routing = llm_tool_routing
+        self._enable_public_api = enable_public_api
 
     @handler
     async def run(
@@ -61,7 +63,10 @@ class ResearchAgent(Executor):
 
         logger.info("ResearchAgent started for query: %s", query)
 
-        selected_tools = ["local_notes", "public_api"]
+        selected_tools = ["local_notes"]
+        if self._enable_public_api:
+            selected_tools.append("public_api")
+
         if self._use_llm and self._llm_tool_routing:
             routed = await choose_research_tools_with_llm(
                 goal=query,
@@ -71,7 +76,9 @@ class ResearchAgent(Executor):
                 timeout=self._llm_timeout,
             )
             if routed:
-                selected_tools = routed
+                selected_tools = [tool for tool in routed if tool in selected_tools]
+                if "local_notes" not in selected_tools:
+                    selected_tools.insert(0, "local_notes")
 
         notes_text = ""
         if "local_notes" in selected_tools:

@@ -19,6 +19,7 @@ class AppConfig:
     notes_file: str
     search_api_endpoint: str
     search_api_timeout: int
+    enable_public_api: bool
     use_llm: bool
     llm_api_key: str
     llm_model: str
@@ -56,6 +57,12 @@ def load_config() -> AppConfig:
 
     use_llm = os.getenv("USE_LLM", "false").strip().lower() in {"1", "true", "yes", "on"}
     llm_web_search = os.getenv("LLM_WEB_SEARCH", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    enable_public_api = os.getenv("ENABLE_PUBLIC_API", "true").strip().lower() in {
         "1",
         "true",
         "yes",
@@ -100,6 +107,7 @@ def load_config() -> AppConfig:
             "SEARCH_API_ENDPOINT", "https://api.duckduckgo.com/"
         ),
         search_api_timeout=int(os.getenv("SEARCH_API_TIMEOUT", "8")),
+        enable_public_api=enable_public_api,
         use_llm=use_llm,
         llm_api_key=os.getenv("OPENAI_API_KEY", ""),
         llm_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),

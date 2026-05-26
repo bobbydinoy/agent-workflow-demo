@@ -78,6 +78,7 @@ def execute_workflow(user_goal: str) -> WorkflowContext:
         llm_endpoint=config.llm_endpoint,
         llm_timeout=config.llm_timeout,
         llm_tool_routing=config.llm_tool_routing,
+        enable_public_api=config.enable_public_api,
     )
     analyzer = AnalysisAgent(
         use_llm=config.use_llm,

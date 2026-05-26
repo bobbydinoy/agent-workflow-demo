@@ -60,6 +60,16 @@ class AnalysisAgent(Executor):
         top_topics = api_topics[:5]
 
         evidence_points: list[str] = []
+        
+        # Extract lines from local notes as evidence
+        if note_content.strip():
+            note_lines = [
+                line.strip() 
+                for line in note_content.splitlines() 
+                if line.strip() and not line.strip().startswith(("#", "Company Notes"))
+            ]
+            evidence_points.extend(note_lines[:8])
+        
         if api_abstract:
             evidence_points.append(api_abstract)
         evidence_points.extend(top_topics)
@@ -72,7 +82,7 @@ class AnalysisAgent(Executor):
 
         if not evidence_points:
             evidence_points.append(
-                "No specific public facts were returned by the API for this query."
+                "No specific evidence was found in local notes or public API for this query."
             )
 
         references = [str(ref) for ref in research_data.get("references", []) if str(ref).strip()]
@@ -89,9 +99,13 @@ class AnalysisAgent(Executor):
             "Expand to the next evidence topic only after you can explain the previous one clearly.",
         ]
 
-        if api_result_count == 0:
+        if api_result_count == 0 and not note_content.strip():
             starter_plan[0] = (
                 "Refine the goal with clearer keywords (for example: 'python basics syntax and exercises')."
+            )
+        elif note_content.strip():
+            starter_plan[0] = (
+                "Review the local company notes provided as your primary reference source."
             )
 
         guide = {
