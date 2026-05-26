@@ -1,0 +1,7 @@
+Company Notes: Internal Productivity and AI Agents
+
+1) Teams lose time switching between project trackers, chats, and documentation.
+2) Internal assistants can automate status summaries and meeting prep.
+3) Research workflows need source traceability and concise outputs.
+4) Safety controls are required before automation actions are approved.
+5) Pilot ideas: ticket triage helper, policy Q&A assistant, release notes drafter.

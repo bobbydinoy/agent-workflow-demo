@@ -1,0 +1,6 @@
+agent-framework>=1.6.0
+agent-framework-openai>=1.6.0
+requests>=2.32.0
+python-dotenv>=1.0.1
+tenacity>=9.0.0
+python-pptx>=1.0.2
