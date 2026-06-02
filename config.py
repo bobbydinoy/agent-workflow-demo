@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -99,7 +100,7 @@ def load_config() -> AppConfig:
         "on",
     }
 
-    return AppConfig(
+    config = AppConfig(
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         data_dir=data_dir,
         notes_file=os.getenv("NOTES_FILE", "company_notes.txt"),
@@ -127,6 +128,30 @@ def load_config() -> AppConfig:
         llm_tool_routing=llm_tool_routing,
     )
 
+    # Validate approval config before returning
+    if config.approval_mode == "token" and not config.approval_token:
+        error_msg = f"""
+{"="*70}
+❌ APPROVAL TOKEN MISSING
+{"="*70}
+Your workflow requires human approval but no approval token was provided.
+
+To fix this, choose one of the following:
+
+Option 1: Disable token approval (use auto mode)
+  Set in .env: APPROVAL_MODE=auto
+
+Option 2: Provide an approval token
+  Set in .env: APPROVAL_TOKEN=your-secret-key
+
+After updating .env, run your workflow again:
+  python main.py --goal "<your goal>"
+{"="*70}
+"""
+        print(error_msg, file=sys.stderr)
+        sys.exit(1)
+    
+    return config
 
 def configure_logging(level: str) -> None:
     """Configure root logging for the full application."""

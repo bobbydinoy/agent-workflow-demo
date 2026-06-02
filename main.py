@@ -89,7 +89,13 @@ def execute_workflow(user_goal: str) -> WorkflowContext:
         llm_web_search=config.llm_web_search,
         llm_search_context_size=config.llm_search_context_size,
     )
-    reviewer = ReviewAgent()
+    reviewer = ReviewAgent(
+        use_llm=config.use_llm,
+        llm_api_key=config.llm_api_key,
+        llm_model=config.llm_model,
+        llm_endpoint=config.llm_endpoint,
+        llm_timeout=config.llm_timeout,
+    )
     compliance = ComplianceAgent()
     approval = HumanApprovalAgent(mode=config.approval_mode, token=config.approval_token)
 
