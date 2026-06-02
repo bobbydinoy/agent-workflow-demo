@@ -16,6 +16,51 @@ from tools.llm_tools import choose_research_tools_with_llm
 logger = logging.getLogger(__name__)
 
 
+def _is_note_content_relevant_to_goal(note_content: str, goal: str) -> bool:
+    """Check if local notes are topically relevant to the user goal.
+    
+    Uses keyword matching to determine relevance without requiring LLM calls.
+    Returns True if there's reasonable overlap, False if notes appear unrelated.
+    """
+    if not note_content.strip() or not goal.strip():
+        return False
+    
+    # Extract keywords from both goal and notes
+    goal_lower = goal.lower()
+    note_lower = note_content.lower()
+    
+    # Split into words and filter out common stopwords
+    stopwords = {
+        "i", "want", "to", "learn", "research", "tell", "me", "about", "the", "a", "an",
+        "and", "or", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
+        "for", "in", "on", "at", "by", "from", "with", "as", "of"
+    }
+    
+    def extract_keywords(text: str) -> set[str]:
+        words = text.split()
+        return {w.strip('.,!?;:"\'').lower() for w in words 
+                if len(w.strip('.,!?;:"\'')) > 2 and w.lower() not in stopwords}
+    
+    goal_keywords = extract_keywords(goal)
+    note_keywords = extract_keywords(note_lower)
+    
+    # Calculate overlap
+    if not goal_keywords or not note_keywords:
+        return False
+    
+    overlap = goal_keywords & note_keywords
+    overlap_ratio = len(overlap) / len(goal_keywords)
+    
+    logger.debug(
+        "Relevance check: goal=%s, overlap_keywords=%s, ratio=%.2f",
+        goal_keywords, overlap, overlap_ratio
+    )
+    
+    # Require at least 25% keyword overlap to consider notes relevant
+    return overlap_ratio >= 0.25
+
+
 class ResearchAgent(Executor):
     """Gather evidence from approved sources without inventing facts."""
 
@@ -63,7 +108,19 @@ class ResearchAgent(Executor):
 
         logger.info("ResearchAgent started for query: %s", query)
 
-        selected_tools = ["local_notes"]
+        # Check if local notes are relevant to the goal
+        notes_text_candidate = read_file(str(self._notes_path))
+        notes_are_relevant = _is_note_content_relevant_to_goal(notes_text_candidate, query)
+        
+        if notes_are_relevant:
+            logger.info("Local notes are relevant to goal; including in tool selection")
+        else:
+            logger.info("Local notes are NOT relevant to goal; skipping local_notes tool")
+
+        selected_tools = []
+        if notes_are_relevant:
+            selected_tools.append("local_notes")
+        
         if self._enable_public_api:
             selected_tools.append("public_api")
 
@@ -76,9 +133,16 @@ class ResearchAgent(Executor):
                 timeout=self._llm_timeout,
             )
             if routed:
-                selected_tools = [tool for tool in routed if tool in selected_tools]
-                if "local_notes" not in selected_tools:
+                # LLM routing can suggest tools; respect if public_api is enabled in config
+                selected_tools = routed
+                # Always ensure local_notes are included if they're relevant
+                if notes_are_relevant and "local_notes" not in selected_tools:
                     selected_tools.insert(0, "local_notes")
+                # If public_api was disabled in config, remove it from routed selection
+                if not self._enable_public_api and "public_api" in selected_tools:
+                    selected_tools.remove("public_api")
+            else:
+                logger.info("LLM tool routing returned no tools; using default selection")
 
         notes_text = ""
         if "local_notes" in selected_tools:

@@ -119,7 +119,21 @@ class AnalysisAgent(Executor):
             ),
         }
 
-        if self._use_llm:
+        # Use LLM to enhance or replace guide if:
+        # 1. LLM is enabled AND
+        # 2. (local notes are missing OR evidence is sparse)
+        should_use_llm_fallback = (
+            self._use_llm 
+            and (not note_content.strip() or len(evidence_points) < 3)
+        )
+
+        if should_use_llm_fallback:
+            logger.info(
+                "Insufficient local evidence (notes: %s chars, evidence points: %d); "
+                "attempting OpenAI fallback",
+                len(note_content),
+                len(evidence_points),
+            )
             llm_guide = await generate_beginner_guide_with_llm(
                 goal=goal,
                 evidence_points=evidence_points,
@@ -132,6 +146,7 @@ class AnalysisAgent(Executor):
                 search_context_size=self._llm_search_context_size,
             )
             if llm_guide is not None:
+                logger.info("OpenAI fallback succeeded; using LLM-generated guide")
                 guide = {
                     "title": llm_guide["title"],
                     "goal": goal,
